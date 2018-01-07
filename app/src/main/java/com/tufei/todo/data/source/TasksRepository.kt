@@ -4,6 +4,13 @@ import com.tufei.todo.data.Task
 
 
 /**
+ * Concrete implementation to load tasks from the data sources into a cache.
+ *
+ *
+ * For simplicity, this implements a dumb synchronisation between locally persisted data and data
+ * obtained from the server, by using the remote data source only if the local database doesn't
+ * exist or is empty.
+ *
  * 1)主构造函数的参数，要声明为val或var，不然无法在类中直接当成员变量使用
  * 不声明也是可以的，但如果你要在类中使用该参数，必须在init块中，将其引用拷贝给对应的成员变量
  * (相当于java在构造方法中，对成员变量初始化)
@@ -29,6 +36,14 @@ class TasksRepository private constructor(
      */
     var mCacheIsDirty = false
 
+    /**
+     * Gets tasks from cache, local data source (SQLite) or remote data source, whichever is
+     * available first.
+     *
+     *
+     * Note: [TasksDataSource.LoadTasksCallback.onDataNotAvailable] is fired if all data sources fail to
+     * get the data.
+     */
     override fun getTasks(callback: TasksDataSource.LoadTasksCallback) {
         //如果编译器判断mCachedTasks有可能为null,编译器就会报错，所以mCachedTasks一开始有初始化
         //不然使用mCachedTasks都要在后面加!!
@@ -55,6 +70,14 @@ class TasksRepository private constructor(
         }
     }
 
+    /**
+     * Gets tasks from local data source (sqlite) unless the table is new or empty. In that case it
+     * uses the network data source. This is done to simplify the sample.
+     *
+     *
+     * Note: [TasksDataSource.GetTaskCallback.onDataNotAvailable] is fired if both data sources fail to
+     * get the data.
+     */
     override fun getTask(taskId: String, callback: TasksDataSource.GetTaskCallback) {
         val cachedTask = getTaskWithId(taskId)
         // Respond immediately with cache if available
@@ -149,15 +172,19 @@ class TasksRepository private constructor(
     }
 
     override fun refreshTasks() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        mCacheIsDirty = true
     }
 
     override fun deleteAllTasks() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        tasksRemoteDataSource.deleteAllTasks()
+        tasksLocalDataSource.deleteAllTasks()
+        mCachedTasks.clear()
     }
 
     override fun deleteTask(taskId: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        tasksRemoteDataSource.deleteTask(taskId)
+        tasksLocalDataSource.deleteTask(taskId)
+        mCachedTasks.remove(taskId)
     }
 
     fun getTasksFromRemoteDataSource(callback: TasksDataSource.LoadTasksCallback) {
@@ -193,6 +220,17 @@ class TasksRepository private constructor(
     //2）一部分是静态方法的情况 : 将方法用 companion object { } 包裹即可
     companion object {
         var INSTANCE: TasksRepository? = null
+
+        /**
+         * Returns the single instance of this class, creating it if necessary.
+
+         * @param tasksRemoteDataSource the backend data source
+         * *
+         * @param tasksLocalDataSource  the device storage data source
+         * *
+         * @return the [TasksRepository] instance
+         */
+        @JvmStatic
         fun getInstance(tasksLocalDataSource: TasksDataSource, tasksRemoteDataSource: TasksDataSource): TasksRepository {
             if (INSTANCE == null) {
                 INSTANCE = TasksRepository(tasksLocalDataSource, tasksRemoteDataSource)
@@ -200,6 +238,11 @@ class TasksRepository private constructor(
             return INSTANCE!!
         }
 
+        /**
+         * Used to force [getInstance] to create a new instance
+         * next time it's called.
+         */
+        @JvmStatic
         fun destroyInstance() {
             INSTANCE = null
         }
