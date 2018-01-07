@@ -56,31 +56,96 @@ class TasksRepository private constructor(
     }
 
     override fun getTask(taskId: String, callback: TasksDataSource.GetTaskCallback) {
-        getTaskWithId(taskId)
+        val cachedTask = getTaskWithId(taskId)
+        // Respond immediately with cache if available
+        if (cachedTask != null) {
+            callback.onTaskLoaded(cachedTask)
+            return
+        }
+
+        // Load from server/persisted if needed.
+
+        // Is the task in the local data source? If not, query the network.
+        tasksLocalDataSource.getTask(taskId, object : TasksDataSource.GetTaskCallback {
+            override fun onTaskLoaded(task: Task) {
+                mCachedTasks.put(task.id, task)
+                callback.onTaskLoaded(task)
+            }
+
+            override fun onDataNotAvailable() {
+                tasksRemoteDataSource.getTask(taskId, object : TasksDataSource.GetTaskCallback {
+                    override fun onTaskLoaded(task: Task) {
+                        mCachedTasks.put(task.id, task)
+                        callback.onTaskLoaded(task)
+                    }
+
+                    override fun onDataNotAvailable() {
+                        callback.onDataNotAvailable()
+                    }
+
+                })
+            }
+
+        })
     }
 
     override fun saveTask(task: Task) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        tasksRemoteDataSource.saveTask(task)
+        tasksLocalDataSource.saveTask(task)
+
+        // Do in memory cache update to keep the app UI up to date
+        mCachedTasks.put(task.id, task)
+
     }
 
     override fun completeTask(task: Task) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        tasksRemoteDataSource.completeTask(task)
+        tasksLocalDataSource.completeTask(task)
+
+        val completedTask = Task(task.title, task.description)
+
+        // Do in memory cache update to keep the app UI up to date
+        mCachedTasks.put(task.id, completedTask)
     }
 
     override fun completeTask(taskId: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        //这样写不行  编译器报错 因为getTaskWithId(taskId)返回的可能为空
+        //completeTask(getTaskWithId(taskId))
+        getTaskWithId(taskId)?.let { completeTask(it) }
     }
 
     override fun activateTask(task: Task) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        tasksRemoteDataSource.activateTask(task)
+        tasksLocalDataSource.activateTask(task)
+
+        val activeTask = Task(task.title, task.description, task.id)
+
+        // Do in memory cache update to keep the app UI up to date
+        mCachedTasks.put(task.id, activeTask)
     }
 
     override fun activateTask(taskId: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        getTaskWithId(taskId)?.let { activateTask(it) }
     }
 
     override fun clearCompletedTasks() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        tasksRemoteDataSource.clearCompletedTasks()
+        tasksLocalDataSource.clearCompletedTasks()
+
+        // Do in memory cache update to keep the app UI up to date
+        /*
+        java:
+        Iterator<Map.Entry<String, Task>> it = mCachedTasks.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, Task> entry = it.next();
+            if (entry.getValue().isCompleted()) {
+                it.remove();
+            }
+        }
+         */
+        mCachedTasks = mCachedTasks.filterValues {
+            !it.isCompleted
+        } as LinkedHashMap<String, Task>
     }
 
     override fun refreshTasks() {
