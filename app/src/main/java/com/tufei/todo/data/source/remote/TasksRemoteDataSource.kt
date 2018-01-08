@@ -13,8 +13,8 @@ import com.tufei.todo.data.source.TasksDataSource
 class TasksRemoteDataSource private constructor() : TasksDataSource {
 
     //必须标注这个L  不会自动提升类型为Long
-    val SERVICE_LATENCY_IN_MILLIS = 5000L
-    var TASKS_SERVICE_DATA = LinkedHashMap<String, Task>(2)
+    private val SERVICE_LATENCY_IN_MILLIS = 5000L
+    private var TASKS_SERVICE_DATA = LinkedHashMap<String, Task>(2)
 
     init {
         addTask("Build tower in Pisa", "Ground looks good, no foundation work required.")
