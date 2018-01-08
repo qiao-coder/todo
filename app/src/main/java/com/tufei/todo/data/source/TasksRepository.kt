@@ -1,6 +1,7 @@
 package com.tufei.todo.data.source
 
 import com.tufei.todo.data.Task
+import java.util.*
 
 
 /**
@@ -29,7 +30,10 @@ class TasksRepository private constructor(
      * This variable has package local visibility so it can be accessed from tests.
      */
     //var mCachedTasks: Map<String, Task>? = null  这里不要使用Map,Map是只读的
-    var mCachedTasks: MutableMap<String, Task> = LinkedHashMap()
+    //下面这行代码应该是没问题的 不过没测过
+    //var mCachedTasks: MutableMap<String, Task> = LinkedHashMap()
+    var mCachedTasks: LinkedHashMap<String, Task> = LinkedHashMap()
+
     /**
      * Marks the cache as invalid, to force an update the next time data is requested. This variable
      * has package local visibility so it can be accessed from tests.
@@ -91,15 +95,17 @@ class TasksRepository private constructor(
         // Is the task in the local data source? If not, query the network.
         tasksLocalDataSource.getTask(taskId, object : TasksDataSource.GetTaskCallback {
             override fun onTaskLoaded(task: Task) {
-                mCachedTasks.put(task.id, task)
-                callback.onTaskLoaded(task)
+                cacheAndPerform(task) {
+                    callback.onTaskLoaded(it)
+                }
             }
 
             override fun onDataNotAvailable() {
                 tasksRemoteDataSource.getTask(taskId, object : TasksDataSource.GetTaskCallback {
                     override fun onTaskLoaded(task: Task) {
-                        mCachedTasks.put(task.id, task)
-                        callback.onTaskLoaded(task)
+                        cacheAndPerform(task) {
+                            callback.onTaskLoaded(it)
+                        }
                     }
 
                     override fun onDataNotAvailable() {
@@ -113,22 +119,20 @@ class TasksRepository private constructor(
     }
 
     override fun saveTask(task: Task) {
-        tasksRemoteDataSource.saveTask(task)
-        tasksLocalDataSource.saveTask(task)
-
         // Do in memory cache update to keep the app UI up to date
-        mCachedTasks.put(task.id, task)
-
+        cacheAndPerform(task) {
+            tasksRemoteDataSource.saveTask(it)
+            tasksLocalDataSource.saveTask(it)
+        }
     }
 
     override fun completeTask(task: Task) {
-        tasksRemoteDataSource.completeTask(task)
-        tasksLocalDataSource.completeTask(task)
-
-        val completedTask = Task(task.title, task.description)
-
         // Do in memory cache update to keep the app UI up to date
-        mCachedTasks.put(task.id, completedTask)
+        cacheAndPerform(task) {
+            it.isCompleted = true
+            tasksRemoteDataSource.completeTask(it)
+            tasksLocalDataSource.completeTask(it)
+        }
     }
 
     override fun completeTask(taskId: String) {
@@ -138,13 +142,11 @@ class TasksRepository private constructor(
     }
 
     override fun activateTask(task: Task) {
-        tasksRemoteDataSource.activateTask(task)
-        tasksLocalDataSource.activateTask(task)
-
-        val activeTask = Task(task.title, task.description, task.id)
-
         // Do in memory cache update to keep the app UI up to date
-        mCachedTasks.put(task.id, activeTask)
+        cacheAndPerform(task) {
+            tasksRemoteDataSource.activateTask(it)
+            tasksLocalDataSource.activateTask(it)
+        }
     }
 
     override fun activateTask(taskId: String) {
@@ -169,6 +171,17 @@ class TasksRepository private constructor(
         mCachedTasks = mCachedTasks.filterValues {
             !it.isCompleted
         } as LinkedHashMap<String, Task>
+    }
+
+    /*
+     * 使用内联
+     */
+    private inline fun cacheAndPerform(task: Task, perform: (Task) -> Unit) {
+        val cachedTask = Task(task.title, task.description, task.id).apply {
+            isCompleted = task.isCompleted
+        }
+        mCachedTasks.put(cachedTask.id, cachedTask)
+        perform(cachedTask)
     }
 
     override fun refreshTasks() {
@@ -202,8 +215,12 @@ class TasksRepository private constructor(
 
     private fun refreshCache(tasks: List<Task>) {
         mCachedTasks.clear()
-        for (task in tasks) {
-            mCachedTasks.put(task.id, task)
+        //都可以
+        //for (task in tasks) {
+        //    cacheAndPerform(task) {}
+        //}
+        tasks.forEach {
+            cacheAndPerform(it) {}
         }
         mCacheIsDirty = false
     }
@@ -219,7 +236,7 @@ class TasksRepository private constructor(
     //1）全都是静态方法的情况 : class ClassName改为 object ClassName 即可
     //2）一部分是静态方法的情况 : 将方法用 companion object { } 包裹即可
     companion object {
-        var INSTANCE: TasksRepository? = null
+        private var INSTANCE: TasksRepository? = null
 
         /**
          * Returns the single instance of this class, creating it if necessary.
@@ -232,10 +249,13 @@ class TasksRepository private constructor(
          */
         @JvmStatic
         fun getInstance(tasksLocalDataSource: TasksDataSource, tasksRemoteDataSource: TasksDataSource): TasksRepository {
-            if (INSTANCE == null) {
-                INSTANCE = TasksRepository(tasksLocalDataSource, tasksRemoteDataSource)
-            }
-            return INSTANCE!!
+            //都可以
+            //if (INSTANCE == null) {
+            //    INSTANCE = TasksRepository(tasksLocalDataSource, tasksRemoteDataSource)
+            //}
+            //return INSTANCE!!
+            return INSTANCE ?: TasksRepository(tasksLocalDataSource, tasksRemoteDataSource)
+                    .apply { INSTANCE = this }
         }
 
         /**
