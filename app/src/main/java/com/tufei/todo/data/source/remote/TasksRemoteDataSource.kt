@@ -7,14 +7,11 @@ package com.tufei.todo.data.source.remote
 class TasksRemoteDataSource private constructor() {
     companion object {
 
-       private var INSTANCE: TasksRemoteDataSource? = null
+        private var INSTANCE: TasksRemoteDataSource? = null
 
         @JvmStatic
         fun getInstance(): TasksRemoteDataSource {
-            if (INSTANCE == null) {
-                INSTANCE = TasksRemoteDataSource()
-            }
-            return INSTANCE!!
+            return INSTANCE ?: TasksRemoteDataSource().apply { INSTANCE = this }
         }
     }
 }
