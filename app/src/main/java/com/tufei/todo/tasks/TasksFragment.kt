@@ -1,16 +1,28 @@
 package com.tufei.todo.tasks
 
+import android.content.Intent
 import android.os.Bundle
+import android.support.design.widget.Snackbar
 import android.support.v4.app.Fragment
+import android.support.v4.content.ContextCompat
+import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
+import android.view.View.GONE
+import android.view.View.VISIBLE
 import android.view.ViewGroup
-import android.widget.BaseAdapter
-import android.widget.CheckBox
-import android.widget.ImageView
-import android.widget.TextView
+import android.widget.PopupMenu
 import com.tufei.todo.R
+import com.tufei.todo.R.id.filteringLabel
+import com.tufei.todo.addedittask.AddEditTaskActivity
 import com.tufei.todo.data.Task
+import com.tufei.todo.taskdetail.TaskDetailActivity
+import kotlinx.android.extensions.LayoutContainer
+import kotlinx.android.synthetic.main.task_item.*
+import kotlinx.android.synthetic.main.tasks_act.*
+import kotlinx.android.synthetic.main.tasks_frag.*
+import kotlinx.android.synthetic.main.tasks_frag.view.*
+import java.util.*
 
 /**
  *  * Display a grid of {@link Task}s. User can choose to view all, active or completed tasks.
@@ -23,79 +35,56 @@ class TasksFragment : Fragment(), TasksContract.View {
 
     override lateinit var presenter: TasksContract.Presenter
 
-    private lateinit var listAdapter: TasksAdapter
-
-    private lateinit var noTasksView: View
-
-    private lateinit var noTaskIcon: ImageView
-
-    private lateinit var noTaskMainView: TextView
-
-    private lateinit var noTaskAddView: TextView
-
-    private lateinit var tasksView: TextView
-
-    private lateinit var filteringLabelView: TextView
+    private lateinit var rvAdapter: TasksAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        TasksAdapter(ArrayList(0), itemListener)
+        rvAdapter = TasksAdapter(ArrayList(0), itemListener)
     }
 
-    private class TasksAdapter(tasks: List<Task>, private val itemListener: TaskItemListener)
-        : BaseAdapter() {
+    override fun onResume() {
+        super.onResume()
+        presenter.start()
+    }
 
-        var tasks: List<Task> = tasks//这里是初始化，直接写入幕后字段
-            set(tasks) {
-                field = tasks
-                notifyDataSetChanged()
-            }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        presenter.result(requestCode, resultCode)
+        filteringLabel
+    }
 
-        override fun getItem(position: Int) = tasks[position]
+    //自动生成的inflater: LayoutInflater?带问号，去掉即可
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        return inflater.inflate(R.layout.tasks_frag, container, false)
+    }
 
-        override fun getItemId(position: Int) = position.toLong()
-
-        override fun getCount() = tasks.size
-
-        override fun getView(position: Int, view: View?, viewGroup: ViewGroup): View {
-            val task = getItem(position)
-            val rowView = view ?: LayoutInflater.from(viewGroup.context)
-                    .inflate(R.layout.task_item, viewGroup, false)
-            with(rowView.findViewById<TextView>(R.id.title)) {
-                //相当于setText(task.titleForList)
-                text = task.titleForList
-            }
-
-            //Active/completed task UI
-            with(rowView.findViewById<CheckBox>(R.id.complete)) {
-                isChecked = task.isCompleted
-                val rowViewBackground =
-                        if (task.isCompleted) R.drawable.list_completed_touch_feedback
-                        else R.drawable.touch_feedback
-                rowView.setBackgroundResource(rowViewBackground)
-                setOnClickListener {
-                    if (!task.isCompleted) {
-                        itemListener.onCompleteTaskClick(task)
-                    } else {
-                        itemListener.onActivateTaskClick(task)
-                    }
-                }
-            }
-
-            //对比上面，这里的又长又丑
-//            if(task.isCompleted){
-//                rowView.setBackgroundDrawable(viewGroup.context.resources
-//                        .getDrawable(R.drawable.list_completed_touch_feedback))
-//            }else{
-//                rowView.setBackgroundDrawable(viewGroup.context.resources
-//                        .getDrawable(R.drawable.touch_feedback))
-//            }
-            return rowView
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        //Set up tasks view
+        rvTask.adapter = rvAdapter
+        noTaskAddView.setOnClickListener {
+            showAddTask()
         }
+        //这个是activity的控件
+        with(activity.fab_add_task) {
+            setImageResource(R.drawable.ic_add)
+            setOnClickListener { presenter.addNewTask() }
+        }
+
+        //Set up progress indicator
+        with(refresh_layout) {
+            setColorSchemeColors(
+                    ContextCompat.getColor(activity, R.color.colorPrimary),
+                    ContextCompat.getColor(activity, R.color.colorAccent),
+                    ContextCompat.getColor(activity, R.color.colorPrimaryDark)
+            )
+            //Set the scrolling view in the custom SwipeRefreshLayout.
+            scrollUpChild = rvTask
+            setOnRefreshListener { presenter.loadTasks(false) }
+        }
+
+        setHasOptionsMenu(true)
     }
 
-
-    val itemListener = object : TaskItemListener {
+    private val itemListener = object : TaskItemListener {
         override fun onTaskClick(clickedTask: Task) {
             presenter.openTaskDetails(clickedTask)
         }
@@ -111,67 +100,165 @@ class TasksFragment : Fragment(), TasksContract.View {
     }
 
     override fun setLoadingIndicator(active: Boolean) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        view ?: return
+        with(refresh_layout) {
+            post {
+                isRefreshing = active
+            }
+        }
+        //也可以
+//        refresh_layout.post {
+//            refresh_layout.isRefreshing = active
+//        }
     }
 
     override fun showTasks(tasks: List<Task>) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        rvAdapter.tasks = tasks
     }
 
     override fun showAddTask() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val intent = Intent(context, AddEditTaskActivity::class.java)
+        startActivityForResult(intent, AddEditTaskActivity.REQUEST_ADD_TASK)
     }
 
     override fun showTaskDetailsUi(taskId: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        // in it's own Activity, since it makes more sense that way and it gives us the flexibility
+        // to show some Intent stubbing.
+        val intent = Intent(context, TaskDetailActivity::class.java)
+        intent.putExtra(TaskDetailActivity.EXTRA_TASK_ID, taskId)
+        startActivity(intent)
     }
 
     override fun showTaskMarkedComplete() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        showMessage(getString(R.string.task_marked_complete))
+    }
+
+    private fun showMessage(message: String) {
+        view?.let {
+            Snackbar.make(it, message, Snackbar.LENGTH_LONG).show()
+        }
     }
 
     override fun showTaskMarkedActive() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        showMessage(getString(R.string.task_marked_active))
     }
 
     override fun showCompletedTasksCleared() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        showMessage(getString(R.string.completed_tasks_cleared))
     }
 
     override fun showLoadingTasksError() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        showMessage(getString(R.string.loading_tasks_error))
     }
 
     override fun showNoTasks() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        showNoTasksViews(
+                resources.getString(R.string.no_tasks_all),
+                R.drawable.ic_assignment_turned_in_24dp,
+                false
+        )
+    }
+
+    private fun showNoTasksViews(mainText: String, iconRes: Int, showAddView: Boolean) {
+        tasksView.visibility = GONE
+        noTasksView.visibility = VISIBLE
+
+        noTasksMain.text = mainText
+        noTaskIcon.setImageDrawable(resources.getDrawable(iconRes))
+        noTaskAddView.visibility = if (showAddView) VISIBLE else GONE
     }
 
     override fun showActiveFilterLabel() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        filteringLabelView.text = resources.getString(R.string.label_active)
     }
 
     override fun showCompletedFilterLabel() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        filteringLabelView.text = resources.getString(R.string.label_completed)
     }
 
     override fun showAllFilterLabel() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        filteringLabelView.text = resources.getString(R.string.label_all)
     }
 
     override fun showNoActiveTasks() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        showNoTasksViews(
+                resources.getString(R.string.no_tasks_active),
+                R.drawable.ic_check_circle_24dp,
+                false
+        )
     }
 
     override fun showNoCompletedTasks() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        showNoTasksViews(
+                resources.getString(R.string.no_tasks_completed),
+                R.drawable.ic_verified_user_24dp,
+                false
+        )
     }
 
     override fun showSuccessfullySavedMessage() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        showMessage(getString(R.string.successfully_saved_task_message))
     }
 
     override fun showFilteringPopUpMenu() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        PopupMenu(context, activity.findViewById(R.id.menu_filter))
+                .apply {
+                    menuInflater.inflate(R.menu.filter_tasks, menu)
+                    setOnMenuItemClickListener { item ->
+                        when (item.itemId) {
+                            R.id.active -> presenter.currentFiltering = TasksFilterType.ACTIVE_TASKS
+                            R.id.completed -> presenter.currentFiltering = TasksFilterType.COMPLETED_TASKS
+                            else -> presenter.currentFiltering = TasksFilterType.ALL_TASKS
+                        }
+                        presenter.loadTasks(false)
+                        true
+                    }
+                    show()
+                }
+    }
+
+    private class TasksAdapter(tasks: List<Task>, private val itemListener: TaskItemListener)
+        : RecyclerView.Adapter<TasksAdapter.TaskViewHolder>() {
+
+
+        var tasks: List<Task> = tasks//这里是初始化，直接写入幕后字段
+                //这里其实就相当于set方法，
+                //而且，这里的tasks其实跟上面的tasks无关，可以随便命名
+            set(tasks) {
+                field = tasks
+                notifyDataSetChanged()
+            }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TaskViewHolder {
+            val root = LayoutInflater.from(parent.context).inflate(R.layout.tasks_frag, parent, false)
+            return TaskViewHolder(root)
+        }
+
+        override fun onBindViewHolder(holder: TaskViewHolder, position: Int) {
+            val task = tasks[position]
+            holder.title.text = task.titleForList
+
+            with(holder.complete) {
+                isChecked = task.isCompleted
+                val rowViewBackground =
+                        if (task.isCompleted) R.drawable.list_completed_touch_feedback
+                        else R.drawable.touch_feedback
+                holder.containerView.setBackgroundResource(rowViewBackground)
+                setOnClickListener {
+                    if (!task.isCompleted) {
+                        itemListener.onCompleteTaskClick(task)
+                    } else {
+                        itemListener.onActivateTaskClick(task)
+                    }
+                }
+            }
+        }
+
+        override fun getItemCount() = tasks.size
+
+        override fun getItemId(position: Int) = position.toLong()
+
+        class TaskViewHolder(override val containerView: View) : RecyclerView.ViewHolder(containerView), LayoutContainer
     }
 
     interface TaskItemListener {

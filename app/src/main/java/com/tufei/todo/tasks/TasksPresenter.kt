@@ -14,9 +14,7 @@ import com.tufei.todo.data.source.TasksRepository
  */
 class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksContract.View) : TasksContract.Presenter {
     private var mFirstLoad: Boolean = false
-    override var currentFiltering: TasksFilterType
-        get() = TasksFilterType.ALL_TASKS
-        set(value) {}
+    override var currentFiltering: TasksFilterType = TasksFilterType.ALL_TASKS
 
     init {
         tasksView.presenter = this
@@ -81,10 +79,10 @@ class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksC
                 }
 
                 // The view may not be able to handle UI updates anymore
-                if(!tasksView.isActive){
+                if (!tasksView.isActive) {
                     return
                 }
-                if(showLoadingUI){
+                if (showLoadingUI) {
                     tasksView.setLoadingIndicator(false)
                 }
 
@@ -92,7 +90,7 @@ class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksC
             }
 
             override fun onDataNotAvailable() {
-                if(!tasksView.isActive){
+                if (!tasksView.isActive) {
                     return
                 }
                 tasksView.showLoadingTasksError()
@@ -101,10 +99,10 @@ class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksC
 
     }
 
-    private fun processTasks(tasks: List<Task>) = if(tasks.isEmpty()){
+    private fun processTasks(tasks: List<Task>) = if (tasks.isEmpty()) {
         // Show a message indicating there are no tasks for that filter type.
         processEmptyTasks();
-    }else{
+    } else {
         //Show the list of tasks
         tasksView.showTasks(tasks)
         //Set the filter label's text
@@ -112,18 +110,18 @@ class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksC
     }
 
     private fun showFilterLabel() {
-        when(currentFiltering){
-            TasksFilterType.ACTIVE_TASKS->tasksView.showActiveFilterLabel()
-            TasksFilterType.COMPLETED_TASKS->tasksView.showCompletedFilterLabel()
-            else->tasksView.showAllFilterLabel()
+        when (currentFiltering) {
+            TasksFilterType.ACTIVE_TASKS -> tasksView.showActiveFilterLabel()
+            TasksFilterType.COMPLETED_TASKS -> tasksView.showCompletedFilterLabel()
+            else -> tasksView.showAllFilterLabel()
         }
     }
 
     private fun processEmptyTasks() {
-        when(currentFiltering){
-            TasksFilterType.ACTIVE_TASKS->tasksView.showNoActiveTasks()
-            TasksFilterType.COMPLETED_TASKS->tasksView.showNoCompletedTasks()
-            else->tasksView.showNoTasks()
+        when (currentFiltering) {
+            TasksFilterType.ACTIVE_TASKS -> tasksView.showNoActiveTasks()
+            TasksFilterType.COMPLETED_TASKS -> tasksView.showNoCompletedTasks()
+            else -> tasksView.showNoTasks()
         }
     }
 
@@ -140,18 +138,18 @@ class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksC
     override fun completeTask(completedTask: Task) {
         tasksRepository.completeTask(completedTask)
         tasksView.showTaskMarkedComplete()
-        loadTasks(false,false)
+        loadTasks(false, false)
     }
 
     override fun activateTask(activeTask: Task) {
         tasksRepository.activateTask(activeTask)
         tasksView.showTaskMarkedActive()
-        loadTasks(false,false)
+        loadTasks(false, false)
     }
 
     override fun clearCompletedTasks() {
         tasksRepository.clearCompletedTasks()
         tasksView.showCompletedTasksCleared()
-        loadTasks(false,false)
+        loadTasks(false, false)
     }
 }
