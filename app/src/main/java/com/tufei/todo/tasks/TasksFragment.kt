@@ -13,7 +13,6 @@ import android.view.View.VISIBLE
 import android.view.ViewGroup
 import android.widget.PopupMenu
 import com.tufei.todo.R
-import com.tufei.todo.R.id.filteringLabel
 import com.tufei.todo.addedittask.AddEditTaskActivity
 import com.tufei.todo.data.Task
 import com.tufei.todo.taskdetail.TaskDetailActivity
@@ -49,7 +48,6 @@ class TasksFragment : Fragment(), TasksContract.View {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         presenter.result(requestCode, resultCode)
-        filteringLabel
     }
 
     //自动生成的inflater: LayoutInflater?带问号，去掉即可
