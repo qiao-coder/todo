@@ -19,6 +19,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".statistics.StatisticsActivity"/>
+        <activity android:name=".addedittask.AddEditTaskActivity"/>
     </application>
 
 </manifest>

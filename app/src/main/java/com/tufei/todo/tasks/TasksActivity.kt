@@ -8,6 +8,7 @@ import android.support.v4.widget.DrawerLayout
 import android.support.v7.app.AppCompatActivity
 import android.view.MenuItem
 import com.tufei.todo.R
+import com.tufei.todo.data.Injection
 import com.tufei.todo.statistics.StatisticsActivity
 import com.tufei.todo.util.replaceFragmentInActivity
 import com.tufei.todo.util.setupActionBar
@@ -30,7 +31,7 @@ class TasksActivity : AppCompatActivity() {
     //插件自动转换的  val  不能再赋值，没有意义，不可取
     //private val mDrawerLayout: DrawerLayout? = null
     private lateinit var mDrawerLayout: DrawerLayout
-
+    private lateinit var mTasksPresenter: TasksContract.Presenter
     /*
     java:
     @Override
@@ -101,8 +102,18 @@ class TasksActivity : AppCompatActivity() {
             replaceFragmentInActivity(it, R.id.contentFrame)
         }
 
+        mTasksPresenter = TasksPresenter(Injection.provideTasksRepository(applicationContext), tasksFragment)
 
+        // Load previously saved state, if available.
+        savedInstanceState?.apply {
+            val currentFiltering = getSerializable(CURRENT_FILTERING_KEY)
+            mTasksPresenter.currentFiltering = currentFiltering as TasksFilterType
+        }
+    }
 
+    override fun onSaveInstanceState(outState: Bundle?) {
+        outState?.putSerializable(CURRENT_FILTERING_KEY,mTasksPresenter.currentFiltering)
+        super.onSaveInstanceState(outState)
     }
 
     fun setupDrawerContent(navigationView: NavigationView) {
@@ -137,4 +148,6 @@ class TasksActivity : AppCompatActivity() {
         }
         return super.onOptionsItemSelected(item)
     }
+
+
 }
