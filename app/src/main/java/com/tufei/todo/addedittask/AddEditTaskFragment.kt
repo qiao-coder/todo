@@ -9,5 +9,8 @@ import android.support.v4.app.Fragment
 class AddEditTaskFragment:Fragment() {
     companion object {
        const val ARGUMENT_EDIT_TASK_ID = "EDIT_TASK_ID"
+        fun newInstance(taskId: String?) {
+
+        }
     }
 }
