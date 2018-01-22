@@ -101,7 +101,7 @@ class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksC
 
     private fun processTasks(tasks: List<Task>) = if (tasks.isEmpty()) {
         // Show a message indicating there are no tasks for that filter type.
-        processEmptyTasks();
+        processEmptyTasks()
     } else {
         //Show the list of tasks
         tasksView.showTasks(tasks)

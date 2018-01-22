@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.support.design.widget.Snackbar
 import android.support.v4.app.Fragment
 import android.support.v4.content.ContextCompat
+import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
@@ -29,8 +30,7 @@ import java.util.*
  * @date 2018/1/7.
  */
 class TasksFragment : Fragment(), TasksContract.View {
-    override var isActive: Boolean = false
-        get() = isAdded
+    override var isActive: Boolean = isAdded
 
     override lateinit var presenter: TasksContract.Presenter
 
@@ -57,7 +57,12 @@ class TasksFragment : Fragment(), TasksContract.View {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         //Set up tasks view
-        rvTask.adapter = rvAdapter
+        with(rvTask) {
+            val linearLayoutManager = LinearLayoutManager(context,LinearLayoutManager.VERTICAL,false)
+            layoutManager = linearLayoutManager
+            adapter = rvAdapter
+        }
+
         noTaskAddView.setOnClickListener {
             showAddTask()
         }
@@ -112,6 +117,7 @@ class TasksFragment : Fragment(), TasksContract.View {
 
     override fun showTasks(tasks: List<Task>) {
         rvAdapter.tasks = tasks
+        rvAdapter.notifyDataSetChanged()
     }
 
     override fun showAddTask() {
@@ -228,7 +234,7 @@ class TasksFragment : Fragment(), TasksContract.View {
             }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TaskViewHolder {
-            val root = LayoutInflater.from(parent.context).inflate(R.layout.tasks_frag, parent, false)
+            val root = LayoutInflater.from(parent.context).inflate(R.layout.task_item, parent, false)
             return TaskViewHolder(root)
         }
 
