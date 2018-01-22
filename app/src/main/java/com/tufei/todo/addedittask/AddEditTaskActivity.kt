@@ -3,6 +3,8 @@ package com.tufei.todo.addedittask
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import com.tufei.todo.R
+import com.tufei.todo.data.Injection
+import com.tufei.todo.util.replaceFragmentInActivity
 import com.tufei.todo.util.setupActionBar
 import kotlinx.android.synthetic.main.addtask_act.*
 
@@ -11,6 +13,7 @@ import kotlinx.android.synthetic.main.addtask_act.*
  * @date 2018/1/13.
  */
 class AddEditTaskActivity : AppCompatActivity() {
+    lateinit var addEditTaskPresenter: AddEditTaskPresenter
 
     companion object {
         const val REQUEST_ADD_TASK = 1
@@ -23,13 +26,38 @@ class AddEditTaskActivity : AppCompatActivity() {
 
         val taskId = intent.getStringExtra(AddEditTaskFragment.ARGUMENT_EDIT_TASK_ID)
 
-        setupActionBar(toolbar){
+        setupActionBar(toolbar) {
             setDisplayShowHomeEnabled(true)
             setDisplayHomeAsUpEnabled(true)
-            setTitle(if(taskId == null)R.string.add_task else R.string.edit_task)
+            setTitle(if (taskId == null) R.string.add_task else R.string.edit_task)
         }
 
-        supportFragmentManager.findFragmentById(R.id.contentFrame)
-        as? AddEditTaskFragment?:AddEditTaskFragment.newInstance(taskId)
+        val addEditTaskFragment = supportFragmentManager.findFragmentById(R.id.contentFrame)
+                as? AddEditTaskFragment ?: AddEditTaskFragment.newInstance(taskId).also {
+            replaceFragmentInActivity(it, R.id.contentFrame)
+        }
+
+        var shouldLoadDataFromRepo = true
+
+        savedInstanceState?.run {
+            shouldLoadDataFromRepo = savedInstanceState.getBoolean(SHOULD_LOAD_DATA_FROM_REPO_KEY)
+        }
+
+        addEditTaskPresenter = AddEditTaskPresenter(
+                taskId,
+                Injection.provideTasksRepository(applicationContext),
+                addEditTaskFragment,
+                shouldLoadDataFromRepo)
+
+    }
+
+    override fun onSaveInstanceState(outState: Bundle?) {
+        outState?.putBoolean(SHOULD_LOAD_DATA_FROM_REPO_KEY,addEditTaskPresenter.isDataMissing)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        onBackPressed()
+        return true
     }
 }

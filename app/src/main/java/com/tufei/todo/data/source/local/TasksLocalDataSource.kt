@@ -17,47 +17,73 @@ class TasksLocalDataSource(
 ) : TasksDataSource {
 
     override fun getTasks(callback: TasksDataSource.LoadTasksCallback) {
-
+        var runnable = Runnable {
+            val tasks = tasksDao.getTasks()
+            appExecutors.mainThread.execute {
+                if (tasks.isEmpty()) {
+                    callback.onDataNotAvailable()
+                } else {
+                    callback.onTasksLoaded(tasks)
+                }
+            }
+        }
+        appExecutors.diskIO.execute(runnable)
     }
 
     override fun getTask(taskId: String, callback: TasksDataSource.GetTaskCallback) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        var runnable = Runnable {
+            val task = tasksDao.getTaskById(taskId)
+            appExecutors.mainThread.execute {
+                if (task != null) {
+                    callback.onTaskLoaded(task)
+                } else {
+                    callback.onDataNotAvailable()
+                }
+            }
+        }
+        appExecutors.diskIO.execute(runnable)
     }
 
     override fun saveTask(task: Task) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val saveRunnable = Runnable { tasksDao.insertTask(task) }
+        appExecutors.diskIO.execute(saveRunnable)
     }
 
     override fun completeTask(task: Task) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val completeRunnable = Runnable { tasksDao.updateCompleted(task.id, true) }
+        appExecutors.diskIO.execute(completeRunnable)
     }
 
     override fun completeTask(taskId: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+
     }
 
     override fun activateTask(task: Task) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val activateRunnable = Runnable { tasksDao.updateCompleted(task.id, false) }
+        appExecutors.diskIO.execute(activateRunnable)
     }
 
     override fun activateTask(taskId: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+
     }
 
     override fun clearCompletedTasks() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val clearTasksRunnable = Runnable { tasksDao.deleteCompletedTasks() }
+        appExecutors.diskIO.execute(clearTasksRunnable)
     }
 
     override fun refreshTasks() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+
     }
 
     override fun deleteAllTasks() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val deleteRunnable = Runnable { tasksDao.deleteTasks() }
+        appExecutors.diskIO.execute(deleteRunnable)
     }
 
     override fun deleteTask(taskId: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val deleteRunnable = Runnable { tasksDao.deleteTaskById(taskId) }
+        appExecutors.diskIO.execute(deleteRunnable)
     }
 
     companion object {
