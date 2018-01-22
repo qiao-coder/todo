@@ -3,7 +3,9 @@ package com.tufei.todo.statistics
 import android.os.Bundle
 import android.support.design.widget.NavigationView
 import android.support.v4.app.NavUtils
+import android.support.v4.view.GravityCompat
 import android.support.v7.app.AppCompatActivity
+import android.view.MenuItem
 import com.tufei.todo.R
 import com.tufei.todo.data.Injection
 import com.tufei.todo.util.replaceFragmentInActivity
@@ -49,5 +51,15 @@ class StatisticsActivity : AppCompatActivity() {
             drawer_layout.closeDrawers()
             true
         }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            android.R.id.home -> {
+                drawer_layout.openDrawer(GravityCompat.START)
+                return true
+            }
+        }
+        return super.onOptionsItemSelected(item)
     }
 }
