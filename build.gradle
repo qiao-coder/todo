@@ -21,14 +21,14 @@ ext {
 }
 
 buildscript {
-    ext.kotlin_version = '1.2.10'
-    ext.gradlePluginVersion = '3.1.0-alpha08'
+    ext.kotlin_version = '1.2.21'
+    ext.gradlePluginVersion = '3.1.0-beta1'
     repositories {
         google()
         jcenter()
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:$gradlePluginVersion"
+        classpath 'com.android.tools.build:gradle:3.1.0-beta1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
 
         // NOTE: Do not place your application dependencies here; they belong
